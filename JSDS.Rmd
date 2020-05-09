@@ -1,0 +1,52 @@
+---
+title: "joint spp distance sampling"
+author: "jmm"
+date: "5/9/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The goal here is to model changes in species abundances based on distance sampling. To model species responses, we want to use a joint species modelling approach a la Ovaskainen.
+
+As a starting point we need a distance sampling model that can be fitted with Stan so that we can then include the joint species part.
+
+Distance sampling is a good example of a hierarchical model where we separate the ecological quantities of interest (animal density), from the observation of such quantities.
+
+Here I follow the idea of a data augmentation approach as presented in [Royle and Dorazio (2009)](https://books.google.co.uk/books?id=rDppWpVP6a0C&lpg=PA236&ots=uWjd9RbkNV&dq=WinBUGS%20specification%20of%20distance%20sampling%20model%20for%20the%20impala%20data%2C%20with%20the%20half-normal%20detection%20function.&pg=PA237#v=onepage&q&f=false). But, as with Stan we cannot have discrete-valued hidden variable we have to use a zero-inflated version (see the San code below).
+
+Let's start by simulating a data set and trying to recover known parameters. We assume that detection probability decreases with distance to the trasect as a half-normal: $\exp\left(- \frac{x^2}{2\sigma^2} \right)$
+
+```{r, echo=FALSE, fig.width=4, fig.height=3}
+curve(exp(-x^2/1), xlim=c(0,3), xlab="distance", ylab="detection prob", 
+      xaxt='n', lwd=2, las=1, bty = "l")
+```
+
+We assume further that a total of $n$ individuals are located at random over the area being sampled. We run the transect for a length $L$ and the boundaries of the study area are at a distance $B$ from each side of the transect. Let's simulate some data:
+
+```{r}
+sigma = 1
+n = 200
+B = 5
+L = 10
+
+x <- runif(n, -B, B)
+p <- exp(-x^2/2*sigma^2) # detection probability
+y_obs <- rbinom(n, size = 1, prob = p)
+```
+
+Now we plot the distribution of distances of all the animals to the transect and the distance of those that were obseved:
+
+```{r}
+hist(abs(x), nclass = 15, xlab = "Distance (x)", col = "grey", 
+     main = "True (grey) \nand observed distances (blue)" )
+ hist(abs(x[y_obs==1]), nclass = 15, col = "blue", add = TRUE)
+```
+
+To estimate density $\frac{n}{ L \times 2 B}$ using data augmentation we add to the list of observed individual a number $nz$ of zeros and define a parameter $\psi$ for the probability that an individual (observed or not) is part of the population under study.
+
+
+
+
