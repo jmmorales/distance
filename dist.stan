@@ -10,7 +10,7 @@ data {
 parameters{
   real<lower=0> sigma;
   real<lower=0,upper=1> psi;
-  real<lower=0,upper=B> x[nz];
+  real<lower=0,upper=B> xsim[nz];
 }
 
 transformed parameters{
@@ -21,7 +21,7 @@ transformed parameters{
     p[i] = exp(-((x[i]^2)/2*sigma2)); 
   }
   for(j in (n_obs+1):(n_obs+nz)){
-    p[j] = exp(-((x[j-n_obs]^2)/2*sigma2)); 
+    p[j] = exp(-((xsim[j-n_obs]^2)/2*sigma2)); 
   }
   
 }
@@ -29,7 +29,7 @@ transformed parameters{
 model { 
   sigma ~ normal(0,2);
   psi ~ beta(1,1);
-  x ~ uniform(0, B);
+  xsim ~ uniform(0, B);
   
   for(n in 1:(n_obs+nz)){
       if (y[n] == 0)
