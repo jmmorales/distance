@@ -39,13 +39,44 @@ y_obs <- rbinom(n, size = 1, prob = p)
 
 Now we plot the distribution of distances of all the animals to the transect and the distance of those that were obseved:
 
-```{r}
+```{r,  fig.width=4, fig.height=3}
 hist(abs(x), nclass = 15, xlab = "Distance (x)", col = "grey", 
      main = "True (grey) \nand observed distances (blue)" )
  hist(abs(x[y_obs==1]), nclass = 15, col = "blue", add = TRUE)
 ```
 
 To estimate density $\frac{n}{ L \times 2 B}$ using data augmentation we add to the list of observed individual a number $nz$ of zeros and define a parameter $\psi$ for the probability that an individual (observed or not) is part of the population under study.
+
+A Stan model for this can be found in the [dist.stan] file
+
+Now we fit the model to the simulated data
+
+```{r}
+
+nz = 200
+
+datos <- list(n_obs = sum(y_obs),
+              nz = nz,
+              x = x[y_obs==1],
+              y = c(rep(1,sum(y_obs)), rep(0,nz)),
+              B = B,
+              Area = 2*B*L)
+
+pars = c("D", "psi", "sigma")
+
+library("rstan")
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+fit <- stan(file = 'dist.stan',
+            data = datos,
+            pars = pars,
+            include = TRUE,
+            iter = 1000, thin = 1, chains = 3)
+
+print(fit)
+```
+
 
 
 
