@@ -51,14 +51,14 @@ dat <- list(nsites=nsites,
             wind=wind, 
             dclass=dclass, 
             site=site,
-            max_x = 100)
+            max_x = 50)
 
 pars = c("alpha0", "alpha1", "beta0", "beta1", "totalN", "D")
 
 fit <- stan(file = 'n-mix.stan', 
             data = dat,
             pars = pars,
-            iter = 1000, thin = 1, chains = 3)
+            iter = 2000, thin = 1, chains = 3)
 
 print(fit)
 
