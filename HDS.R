@@ -4,6 +4,10 @@
 # from Kery and Royle page 452
 # 8.5.3 BAYESIAN HDS USING THE THREE-PART CONDITIONAL MULTINOMIAL MODEL
 
+library("rstan")
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
 # we use this library to simulate data
 library(AHMbook)
 
@@ -49,10 +53,22 @@ dat <- list(nsites=nsites,
             site=site,
             max_x = 100)
 
-library("rstan")
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores())
+pars = c("alpha0", "alpha1", "beta0", "beta1", "totalN", "D")
 
 fit <- stan(file = 'n-mix.stan', 
             data = dat,
-            iter = 2000, thin = 1, chains = 3)
+            pars = pars,
+            iter = 1000, thin = 1, chains = 3)
+
+print(fit)
+
+samples = extract(fit)
+
+op = par(mfrow=c(1,3))
+plot(density(samples$totalN), main = "")
+abline(v = sum(tmp$N.true))
+plot(density(samples$alpha1), main = "")
+abline(v=tmp$beta.sig)
+plot(density(samples$beta1), main = "")
+abline(v=tmp$beta.lam)
+par(op)
