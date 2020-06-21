@@ -46,7 +46,7 @@ transformed parameters{
   }
   
   for(j in (n_obs+1):(n_obs+nz)){
-    sigma[j] = exp(a_g + b_g * floor(ugz[j-n_obs]));
+    sigma[j] = exp(a_g + b_g * ugz[j-n_obs]);
     p[j] = exp(-rsim[j-n_obs]^2/2*sigma[j]^2);
   }
 }
