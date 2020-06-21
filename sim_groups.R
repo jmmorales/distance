@@ -40,7 +40,7 @@ stan_dat <- list(
   X = X 
 )
 
-pars <- c("psi", "alpha", "beta", "sigma", "lambda_group", "a_g", "b_g")
+pars <- c("psi", "alpha", "beta", "lambda_group", "a_g", "b_g")
 
 fit <- stan(file = 'dist_groups_cov.stan',
             data = stan_dat,
@@ -50,20 +50,3 @@ fit <- stan(file = 'dist_groups_cov.stan',
             chains = 3)
 
 
-#, control = list(adapt_delta = 0.99))
-
-
-psi = numeric(1000)
-for(i in 1:1000){
-  la = pars$alpha[i] + x * pars$beta[i]
-  psi[i] = sum(exp(la))/(n_obs+nz)
-}
-
-
-mean.lambda = 2
-beta.lam = 1
-nsites = 100
-habitat <- rnorm(nsites)
-wind <- runif(nsites, -2, 2)
-lambda <- exp(log(mean.lambda) + beta.lam * habitat)
-N <- rpois(nsites, lambda)
