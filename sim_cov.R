@@ -3,7 +3,7 @@
 # simulate data
 library(AHMbook)
 
-set.seed(1234)
+#set.seed(1)
 tmp <- simHDS(type="line", discard0=FALSE) 
 
 datos = as.data.frame(tmp$data)
@@ -25,7 +25,7 @@ library("rstan")
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-nz = 100
+nz = 300
 
 stan_dat <- list(
   n_obs = n_obs,
@@ -39,11 +39,30 @@ stan_dat <- list(
   X = X 
 )
 
-pars <- c("alpha", "beta", "sigma")
+pars <- c("psi", "alpha", "beta", "sigma")
 
 fit <- stan(file = 'dist_cat_cov.stan',
             data = stan_dat,
             pars = pars,
-            iter = 10000,
-            thin = 5,
-            chains = 3, control = list(adapt_delta = 0.99))
+            iter = 1000,
+            thin = 1,
+            chains = 3)
+
+
+#, control = list(adapt_delta = 0.99))
+
+
+psi = numeric(1000)
+for(i in 1:1000){
+  la = pars$alpha[i] + x * pars$beta[i]
+  psi[i] = sum(exp(la))/(n_obs+nz)
+}
+
+
+mean.lambda = 2
+beta.lam = 1
+nsites = 100
+habitat <- rnorm(nsites)
+wind <- runif(nsites, -2, 2)
+lambda <- exp(log(mean.lambda) + beta.lam * habitat)
+N <- rpois(nsites, lambda)

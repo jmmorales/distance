@@ -54,7 +54,10 @@ transformed parameters{
 model { 
 
   rsim ~ uniform(0, B);
+  lambda_group ~ normal(0,2);
   ugz ~ normal(lambda_group, sqrt(lambda_group));
+  a_g ~ normal(0,1);
+  b_g ~ normal(0,1);
   alpha ~ normal(1,2);
   beta ~ normal(1,1);
   
@@ -66,6 +69,7 @@ model {
     for(n in 1: n_obs){
       target += bernoulli_lpmf(1 | psi) + bernoulli_lpmf(1 | p[n]);
       target += categorical_lpmf(site[n]|site_prob);
+      target += poisson_lpmf(groupsize[n]|lambda_group);
     }
     
     for(i in 1:nz){
