@@ -18,10 +18,10 @@ transformed parameters{
   real<lower=0> sigma2 = sigma*sigma;
   
   for(i in 1:n_obs){
-    p[i] = exp(-((x[i]^2)/2*sigma2)); 
+    p[i] = exp(-x[i]^2/2*sigma2); 
   }
   for(j in (n_obs+1):(n_obs+nz)){
-    p[j] = exp(-((xsim[j-n_obs]^2)/2*sigma2)); 
+    p[j] = exp(-xsim[j-n_obs]^2/2*sigma2); 
   }
   
 }
