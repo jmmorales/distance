@@ -49,4 +49,17 @@ fit <- stan(file = 'dist_groups_cov.stan',
             thin = 1,
             chains = 3)
 
+pos = extract(fit, pars = pars)
+op = par(mfrow = c(3,2))
+plot(density(pos$alpha))
+abline(v = tmp$beta0)
+plot(density(pos$beta))
+abline(v = tmp$beta1)
+plot(density(pos$a_g))
+abline(v = tmp$alpha0)
+plot(density(pos$b_g))
+abline(v = tmp$alpha1)
+plot(density(pos$lambda_group))
+abline(v = tmp$lambda.group)
+par(op)
 
