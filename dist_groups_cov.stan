@@ -42,12 +42,12 @@ transformed parameters{
   psi = sum(lambda)/(n_obs + nz);
   for(n in 1:n_obs){
     sigma[n] = exp(a_g + b_g * groupsize[n]);
-    p[n] = exp(- r[n]^2/2*sigma[n]^2);
+    p[n] = exp(- r[n]^2/(2*sigma[n]^2));
   }
   
   for(j in (n_obs+1):(n_obs+nz)){
     sigma[j] = exp(a_g + b_g * ugz[j-n_obs]);
-    p[j] = exp(-rsim[j-n_obs]^2/2*sigma[j]^2);
+    p[j] = exp(-rsim[j-n_obs]^2/(2*sigma[j]^2));
   }
 }
 
