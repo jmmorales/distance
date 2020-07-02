@@ -7,71 +7,86 @@ data {
   int<lower=1,upper=n_sites> site[n_obs]; // site id
   real<lower=0,upper=B> r[n_obs];   // observed distances
   int<lower=1> K;   // number of env covariates
+  int<lower=1> M;   // covariates for detection 
   //real<lower=0> Area;
   matrix[n_sites, K] X;             // env design matrix 
+  matrix[n_sites, M] H;
 }
 
 transformed data{
 }
 
 parameters{
-  real<lower=0> sigma;
-  //real<lower=0,upper=1> psi;
   real<lower=0,upper=B> rsim[nz];
   real alpha;
+  real alpha_h;
   vector[K] beta;
+  vector[M] beta_h;
 }
 
 transformed parameters{
-  real<lower=0,upper=1> p[n_obs+nz];
-  real<lower=0> sigma2 = sigma*sigma;
-  vector[n_sites] lambda;
+  real logit_p[n_obs];
+  matrix[nz, n_sites] logit_pz;
   real<lower=0,upper=1> psi;
+  real lp0;
+  vector[n_sites] log_lambda;
+  vector[n_sites] sigma;
+  {
+    real log_p[n_obs];
+    matrix[nz, n_sites] log_pz;
+    
     for(s in 1:n_sites){
-    lambda[s] = exp(alpha + X[s,] * beta);
-  }
-  psi = sum(lambda)/(n_obs + nz);
-  for(i in 1:n_obs){
-    p[i] = exp(- r[i]^2/2*sigma2); 
-  }
-  for(j in (n_obs+1):(n_obs+nz)){
-    p[j] = exp(-rsim[j-n_obs]^2/2*sigma2);
+      log_lambda[s] = (log(alpha) + X[s,] * beta);
+      sigma[s] = exp(log(alpha_h) + H[s,] * beta_h);
+    }
+    
+    psi = sum(exp(log_lambda))/(n_obs + nz);
+    lp0 = bernoulli_lpmf(0 | psi) ;
+    
+    for(i in 1:n_obs){
+      log_p[i] = - r[i]^2/(2*sigma[site[i]]^2);
+      logit_p[i] = log_p[i] - log1m_exp(log_p[i]);
+    }
+    
+    for(j in 1:nz){
+      for(s in 1:n_sites){
+        log_pz[j,s] = - rsim[j]^2/(2*sigma[s]^2); 
+        logit_pz[j,s] = log_pz[j,s] - log1m_exp(log_pz[j,s]);
+      }
+    }
   }
 }
 
 model { 
-  //vector[n_sites] lambda;
-  
-  sigma ~ normal(0, 1);
   rsim ~ uniform(0, B);
-  alpha ~ normal(1,2);
-  beta ~ normal(1,1);
-
-  //for(s in 1:n_sites){
-  //  lambda[s] = exp(alpha + X[s,] * beta);
-  //}
+  alpha ~ normal(1,1);
+  beta ~ normal(0,1);
+  alpha_h ~ normal(1,1);
+  beta_h ~ normal(0,1);
   
   {
-    vector[n_sites] site_prob = softmax(lambda);
+    vector[n_sites] log_site_prob = log_softmax(log_lambda);
+    vector[n_sites] site_prob = softmax(log_lambda);
+    
     //real psi= sum(lambda)/(n_obs + nz);
-    vector[n_sites * 2] lpsite =  to_vector(append_row(log(site_prob), log(site_prob)));
-  
-  for(n in 1: n_obs){
-    target += bernoulli_lpmf(1 | psi) + bernoulli_lpmf(1 | p[n]);
-    target += categorical_lpmf(site[n]|site_prob);
-  }
-  
-  for(i in 1:nz){
-    vector[n_sites * 2] lps = lpsite;
-    for(s in 1:n_sites){
-      lps[s] += bernoulli_lpmf(0 | psi);
-      lps[s+n_sites] += bernoulli_lpmf(1 | psi) + bernoulli_lpmf(0 | p[n_obs+i]);
+    vector[n_sites + 1] lpsite =  to_vector(append_row(lp0, log_site_prob));
+    
+    for(n in 1: n_obs){
+      target += bernoulli_lpmf(1 | psi) + bernoulli_logit_lpmf(1 | logit_p[n]);
+      target += categorical_lpmf(site[n]|site_prob);
     }
-    target += log_sum_exp(lps);
+    
+    for(i in 1:nz){
+      vector[n_sites + 1] lps = lpsite;
+      for(s in 1:n_sites){
+        lps[s+1] += bernoulli_lpmf(1 | psi) + bernoulli_logit_lpmf(0 | logit_pz[i,s]);
+      }
+      target += log_sum_exp(lps);
+    }
   }
-}
 }
 
 // generated quantities{
-//   real D = (n_obs+(nz*psi))/Area;
-// }
+  //   real D = (n_obs+(nz*psi))/Area;
+  // }
+  
