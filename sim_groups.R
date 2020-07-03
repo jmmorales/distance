@@ -4,7 +4,7 @@
 library(AHMbook)
 
 #set.seed(1)
-tmp <- simHDSg(type = "line")
+tmp <- simHDSg(type = "line", lambda.group = 2, B=3)
 
 datos = as.data.frame(tmp$data)
 
@@ -26,7 +26,7 @@ library("rstan")
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-nz = 300
+nz = 200
 
 stan_dat <- list(
   n_obs = n_obs,
