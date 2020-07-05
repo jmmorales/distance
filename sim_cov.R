@@ -25,7 +25,7 @@ library("rstan")
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-nz = 300
+nz = 200
 
 stan_dat <- list(
   n_obs = n_obs,
@@ -36,10 +36,12 @@ stan_dat <- list(
   site = as.integer(s), # (c(s, rep(1:n_sites, each = nzs ))),
   r = r,
   K = 1, 
-  X = X 
+  X = X,
+  M = 1,
+  H = as.matrix(tmp$wind)
 )
 
-pars <- c("psi", "alpha", "beta", "sigma")
+pars <- c("psi", "alpha", "beta", "alpha_h", "beta_h")
 
 fit <- stan(file = 'dist_cat_cov.stan',
             data = stan_dat,
