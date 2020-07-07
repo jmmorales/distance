@@ -30,30 +30,32 @@ data {
   int<lower=1> K;                         // number of env covariates
   matrix[n_sites, K] X;                   // env design matrix 
   int<lower=1> J;                 // number of groups (species)
+  int<lower=1> nj[J];
   int<lower=1> L;                 // number group level predictors
   matrix[J,L] TT;                 // group-level traits
   matrix[J,J] C;                  // phylogenetic correlation matrix
   vector[J] ones;                 // vector on 1s
   int<lower=1,upper=J> jj[n_obs+nz];     // group id 
+  int<lower=0> nzj;
 }
 
 transformed data{
-  vector[J] nj = ones-1;
+  //  vector[J] nj = ones-1;
   int<lower=n_obs> m = n_obs + nz;
-  int nzj = nz/J;
+  //int nzj = nz/J;
   
-  for(i in 1:n_obs){
-    nj[jj[i]] = nj[jj[i]] + 1;
-  }
+  //  for(i in 1:n_obs){
+    //    nj[jj[i]] = nj[jj[i]] + 1;
+    //  }
 }
 
 parameters{
   real<lower=0,upper=B> rsim[nz]; // unobserved distances
-  real<lower=0> sigma[J];
+  //real<lower=0> sigma[J];
   
   corr_matrix[K+2] Omega;       // correlation matrix for regression parameters
   vector<lower=0>[K+2] tau;     // variance for parameters
-  vector[J * (K+2)] theta;      // regression coefficients
+  vector[J * (K+2)] theta;      // coefficients
   real<lower=0,upper=1> rho;    // phylogenetic effect
   vector[L * (K+2)] z;          // coefficients for trait effects on regression pars
 }
@@ -66,7 +68,7 @@ transformed parameters{
   matrix[J, K+2] b_m = to_matrix(theta, J, K+2);
   
   real logit_p[m];
-  matrix[n_sites, J] log_lambda;
+  vector[J] log_lambda[n_sites] ;
   real<lower=0,upper=1> psi[J];
   real lp0[J];
   
@@ -81,14 +83,15 @@ transformed parameters{
       dist[n_obs + i] = rsim[i];
     }
     
-    for(s in 1:n_sites){
-      for(j in 1:J){
-        log_lambda[s,j] = b_m[j,1] + X[s,1] * b_m[j,2];
-      }
+    for(j in 1:J){
+      //for(s in 1:n_sites){
+        log_lambda[j] = to_vector(  X * b_m[j,2] + b_m[j,1] );
+      //}
     }
     
+    
     for(j in 1:J){
-      psi[j] = sum(exp(log_lambda[,j]))/(nj[j] + nzj);
+      psi[j] = sum(exp(log_lambda[j]))/(nj[j] + nzj);
       lp0[j] = bernoulli_lpmf(0 | psi[j]) ;
     }
     
@@ -111,7 +114,7 @@ model {
   
   {
     vector[J] site_prob[n_sites];
-    for(j in 1:J) site_prob[j] = softmax(log_lambda[,j]);
+    for(j in 1:J) site_prob[j] = softmax(to_vector(log_lambda[j,]));
     
     for(n in 1: n_obs){
       target += bernoulli_lpmf(1 | psi[jj[n]]) + bernoulli_logit_lpmf(1 | logit_p[n]);
