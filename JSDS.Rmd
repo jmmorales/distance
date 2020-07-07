@@ -243,9 +243,11 @@ pars <- c("psi", "rho", "theta")
 fit <- stan(file = 'jsd_cov.stan',
             data = stan_dat,
             #pars = pars,
-            iter = 500,
+            iter = 1000,
             thin = 1,
-            chains = 3)
+            chains = 3,
+            control = list(adapt_delta = 0.99)
+            )
 ```
 
 
