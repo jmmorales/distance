@@ -181,7 +181,7 @@ Now we define the sampling scheme. Here we follow the simulation sheme of packag
 n_sites <- 35 # sampling units
 # sample level predictor (environmental covariate)
 x <- rnorm(n_sites)
-B = 3 # max distance
+B = 5 # max distance
 
 # species indicator
 j <- rep(1:n.s, each = n_sites) 
@@ -215,11 +215,15 @@ library("rstan")
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-nz = 4000
+nzj = 200
+nz = nzj*n.s
+
 
 stan_dat <- list(
   n_obs = dim(data)[1],
   nz = nz,
+  nj = as.integer(table(data[,2])),
+  nzj = nzj,
   n_sites = n_sites,
   B = B,
   site = data[,1],
@@ -231,7 +235,7 @@ stan_dat <- list(
   TT = TT,
   C = C,
   ones = numeric(max(j)) + 1,
-  jj = c(data[,2], rep(1:n.s, each = round(nz/n.s) ))
+  jj = c(data[,2], rep(1:n.s, each = nzj))
 )
 
 pars <- c("psi", "rho", "theta")
@@ -239,8 +243,8 @@ pars <- c("psi", "rho", "theta")
 fit <- stan(file = 'jsd_cov.stan',
             data = stan_dat,
             #pars = pars,
-            iter = 5000,
-            thin = 3,
+            iter = 500,
+            thin = 1,
             chains = 3)
 ```
 

@@ -86,7 +86,12 @@ model {
   }
 }
 
-// generated quantities{
-  //   real D = (n_obs+(nz*psi))/Area;
-  // }
+generated quantities{
+  int<lower=0> N[n_sites];
+  int<lower=0> Ntotal;
   
+  for(i in 1:n_sites) N[i] = poisson_log_rng(log_lambda[i]);
+  Ntotal = sum(N);
+  
+  //   real D = (n_obs+(nz*psi))/Area;
+}
