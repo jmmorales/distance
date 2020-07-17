@@ -11,15 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal here is to model changes in species abundances based on distance sampling. To model species responses, we want to use a joint species modelling approach a la Ovaskainen.
 
-As a starting point we need a distance sampling model that can be fitted with Stan so that we can then include the joint species part.
+As a starting point we need a distance sampling model that can be fitted with `Stan` so that we can then include the joint species part.
 
-Distance sampling is a good example of a hierarchical model where we separate the ecological quantities of interest (animal density), from the observation of such quantities.
-
-Here I follow the idea of a data augmentation approach as presented in [Royle and Dorazio (2009)](https://books.google.co.uk/books?id=rDppWpVP6a0C&lpg=PA236&ots=uWjd9RbkNV&dq=WinBUGS%20specification%20of%20distance%20sampling%20model%20for%20the%20impala%20data%2C%20with%20the%20half-normal%20detection%20function.&pg=PA237#v=onepage&q&f=false). But, as with Stan we cannot have discrete-valued hidden variable we have to use a zero-inflated version (see the San code below).
+Distance sampling is a good example of a hierarchical model where we separate the ecological quantities of interest (animal abundance/density), from the observation of such quantities.
 
 Let's start by simulating a data set and trying to recover known parameters. We assume that detection probability decreases with distance to the trasect as a half-normal: $\exp\left(- \frac{x^2}{2\sigma^2} \right)$
 
-```{r, echo=FALSE, fig.width=4, fig.height=3}
+```{r, echo=FALSE, fig.width=3, fig.height=3}
 curve(exp(-x^2/1), xlim=c(0,3), xlab="distance", ylab="detection prob", 
       xaxt='n', lwd=2, las=1, bty = "l")
 ```
@@ -27,9 +25,10 @@ curve(exp(-x^2/1), xlim=c(0,3), xlab="distance", ylab="detection prob",
 We assume further that a total of $n$ individuals are located at random over the area being sampled. We run the transect for a length $L$ and the boundaries of the study area are at a distance $B$ from each side of the transect. Let's simulate some data:
 
 ```{r}
+set.seed(36)
 sigma = 1
 n = 200
-B = 5
+B = 3
 L = 10
 
 x <- runif(n, -B, B)
@@ -46,13 +45,13 @@ hist(abs(x), nclass = 15,
 hist(abs(x[y_obs==1]), col = "blue", add = TRUE)
 ```
 
-To estimate density $\frac{n}{ L \times 2 B}$ using data augmentation we add to the list of observed individual a number $nz$ of zeros and define a parameter $\psi$ for the probability that an individual (observed or not) is part of the population under study.
+To estimate density $\frac{n}{ L \times 2 B}$ we can use a data augmentation approach as presented in [Royle and Dorazio (2009)](https://books.google.co.uk/books?id=rDppWpVP6a0C&lpg=PA236&ots=uWjd9RbkNV&dq=WinBUGS%20specification%20of%20distance%20sampling%20model%20for%20the%20impala%20data%2C%20with%20the%20half-normal%20detection%20function.&pg=PA237#v=onepage&q&f=false). For this, we add to the list of observed individual a number $nz$ of zeros and define a parameter $\psi$ for the probability that an individual (observed or not) is part of the population under study.
 
-A Stan model for this can be found in the [dist.stan](https://github.com/jmmorales/distance/raw/master/dist.stan) file
+Because with `Stan` we cannot have discrete-valued hidden variables we have to use a zero-inflated version, see the [dist.stan](https://github.com/jmmorales/distance/raw/master/dist.stan) file
 
-Now we fit the model to the simulated data
+Let's fit this model to the simulated data
 
-```{r}
+```{r, cache=TRUE}
 
 nz = 200
 
@@ -80,9 +79,57 @@ print(fit)
 samples = extract(fit)
 
 op = par(mfrow=c(1,2))
-plot(density(samples$D), main = "")
+plot(density(samples$D), main = "density", xlab = "")
 abline(v = n/(2*B*L))
-plot(density(samples$sigma), main = "")
+plot(density(samples$sigma), main = "sigma", xlab = "")
+abline(v=sigma)
+par(op)
+```
+
+## Integrating the detection function
+
+An alternative way of estimating $\sigma$ and population density is by looking at the probabilities of obtaining the observed distances $x$. Using Bayes rule, we can see that 
+
+$$
+p(x|y=1) = \frac{p(y=1|x)p(x)}{p(y=1)}
+$$
+
+for the case of the half-normal, we get
+$$
+p(x|y=1) = \frac{\exp(- x^2/(2 \sigma^2))}{\int_0^B{\exp(- x^2/(2 \sigma^2))}}
+$$
+
+We can use the function `integrate_1d` in `Stan` to get the denominator. See the [dist_int.stan](https://github.com/jmmorales/distance/raw/master/dist_int.stan) file (this is a conditional likelihood model and not the full likelihood one). 
+
+Let's fit this model to the simulated data
+
+```{r, cache=TRUE}
+
+datos <- list(n_obs = sum(y_obs),
+              x = abs(x[y_obs==1]),
+              B = B,
+              Area = 2*B*L)
+
+pars = c("D", "sigma", "pbar")
+
+library("rstan")
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+fit <- stan(file = 'dist_int.stan',
+            data = datos,
+            pars = pars,
+            include = TRUE,
+            iter = 1000, thin = 1, chains = 3)
+
+print(fit)
+
+samples = extract(fit)
+
+op = par(mfrow=c(1,2))
+plot(density(samples$D), main = "density", xlab = "")
+abline(v = n/(2*B*L))
+plot(density(samples$sigma), main = "sigma", xlab = "")
 abline(v=sigma)
 par(op)
 ```
@@ -119,21 +166,21 @@ Lets simulate some data. For this, we start by defining the parameter structure 
 ```{r}
 library(ape)
 library(mvtnorm)
-set.seed(361)
+set.seed(36)
 
-n.s <- 20  # number of spp
-n.p <- 2   # number of parameters
-n.t <- 2   # number of traits
+n_s <- 20  # number of spp
+n_p <- 3   # number of parameters
+n_t <- 2   # number of traits
 
 # define species traits
-dgrass <- rbeta(n.s, 1, 1)  # some variable such as fraction of grass in diet
-log_bm <- rnorm(n.s, 0, 1)  # log body mass
+dgrass <- rbeta(n_s, 1, 1)  # some variable such as fraction of grass in diet
+log_bm <- rnorm(n_s, 0, 1)  # log body mass
 
 # define trait matrix includding ones for the intercept
-TT <- as.matrix(cbind(rep(1, n.s), scale(dgrass), scale(log_bm)))
+TT <- as.matrix(cbind(rep(1, n_s), scale(dgrass), scale(log_bm)))
 
 # simulate phylogeny 
-tree <- rtree(n = n.s)    
+tree <- rtree(n = n_s)    
 CC <- vcv(tree, corr = TRUE) # species correlation based on phylogeny
 
 # sort species and re-arrange phylogenetic correlation
@@ -148,16 +195,16 @@ for(i in 1:ncol(CC)){
 }
 
 # define parameters that link traits to expected thetas
-Z <- matrix(c(0.1, 0.5, 0.4, 0.5, -0.5, 0), (n.t + 1), n.p)
+Z <- matrix(c(1, 0, 0.2, 0.1, 0.5, 0.4, 0.5, -0.5, 0 ), (n_t + 1), n_p)
 
 # get expected thetas
 M <- TT %*% Z
 
-Sigma <- diag(n.p) * 0.5
+Sigma <- diag(n_p) * 0.5
 rho = 0.5  # correlation with phylogeny
 
-thetas <- rmvnorm(1, mean = as.vector(M), kronecker(Sigma, rho*C + (1-rho) * diag(n.s)))
-Theta <- matrix(thetas[1,], n.s, n.p)
+thetas <- rmvnorm(1, mean = as.vector(M), kronecker(Sigma, rho*C + (1-rho) * diag(n_s)))
+Theta <- matrix(thetas[1,], n_s, n_p)
 ```
 
 We can inspect now how grass in diet and body mass relate to the intercept and slope of the regression between the predictor $x$ and the expected count at a samping unit
@@ -166,10 +213,10 @@ nf = layout(matrix(c(1,2,3,4,0,0),3,2,byrow=TRUE), widths=c(1,1), heights=c(1,1,
 #layout.show(nf)
 
 op <- par( mar = c(3, 3, 2, 2) + 0.1, mgp = c(3.5, 1, 0), las = 1, bty = "n", cex = 1.2)
-plot(scale(dgrass), Theta[,1], ylab = "", xlab = "", main = "intercept")
-plot(scale(dgrass), Theta[,2], ylab = "", xlab = "", main = "slope")
-plot(scale(log_bm), Theta[,1], ylab = "", xlab = "")
+plot(scale(dgrass), Theta[,2], ylab = "", xlab = "", main = "intercept")
+plot(scale(dgrass), Theta[,3], ylab = "", xlab = "", main = "slope")
 plot(scale(log_bm), Theta[,2], ylab = "", xlab = "")
+plot(scale(log_bm), Theta[,3], ylab = "", xlab = "")
 mtext("         scaled grass in diet           scaled log body mass", side = 1, line = -2, outer = TRUE, cex=1.3)
 par(op)
 ```
@@ -178,20 +225,20 @@ par(op)
 Now we define the sampling scheme. Here we follow the simulation sheme of package `AHMbook`.
 
 ```{r}
-n_sites <- 35 # sampling units
+n_sites <- 100 # sampling units
 # sample level predictor (environmental covariate)
 x <- rnorm(n_sites)
 B = 5 # max distance
 
 # species indicator
-j <- rep(1:n.s, each = n_sites) 
-site <- rep(1:n_sites, n.s)
-x.s <- rep(x, n.s)
+j <- rep(1:n_s, each = n_sites) 
+site <- rep(1:n_sites, n_s)
+x.s <- rep(x, n_s)
 n <- length(j) # sample size
 
 log_lambda <- Theta[j,1] + Theta[j,2] * x.s
 N <- rpois(n, exp(log_lambda))
-sigma <- exp(rnorm(n.s))
+sigma <- exp(Theta[,1])
 ```
 
 ```{r}
@@ -208,113 +255,43 @@ for (i in 1:length(N)) {
   } 
 }
 colnames(data) <- c("site","sp", "y", "d")
+datos = as.data.frame(data)
 ```
 
+
 ```{r}
+
 library("rstan")
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-nzj = 200
-nz = nzj*n.s
-
-
 stan_dat <- list(
-  n_obs = dim(data)[1],
-  nz = nz,
-  nj = as.integer(table(data[,2])),
-  nzj = nzj,
+  n_obs = dim(datos)[1],
   n_sites = n_sites,
   B = B,
-  site = data[,1],
-  r = data[,4],
-  K = 1, 
-  X = as.matrix(x),
-  J = as.integer(n.s),
-  L = 3,
+  site = as.integer(datos$site), # (c(s, rep(1:n_sites, each = nzs ))),
+  r = datos$d,
+  K = 2, 
+  X = as.matrix(cbind(numeric(length(x))+1, x)),
+  n_max = rep(50, n_s),
+  n_s = as.integer(n_s),
+  n_t = 3,
   TT = TT,
   C = C,
-  ones = numeric(max(j)) + 1,
-  jj = c(data[,2], rep(1:n.s, each = nzj))
+  ones = numeric(n_s) + 1,
+  sp = datos$sp
 )
 
-pars <- c("psi", "rho", "theta")
+pars <- c("pbar", "b_m", "rho",  "Sigma", "z")
 
-fit <- stan(file = 'jsd_cov.stan',
+
+fit <- stan(file = 'dist_pois_bin_int.stan',
             data = stan_dat,
-            #pars = pars,
-            iter = 1000,
-            thin = 1,
-            chains = 3,
-            control = list(adapt_delta = 0.99)
-            )
-```
+            pars = pars,
+            iter = 1000, thin = 1, chains = 3)
 
-
-Before making any inferences we check for convergence and reasonable sample sizes on the posteriors
-
-```{r}
-fit_summary <- summary(fit)$summary
-op <- par(mfrow = c(1,2))
-hist(fit_summary[,10], main = "R-hat")
-hist(fit_summary[,9], main = "n-eff" )
-par(op)
-
-N <- dim(fit_summary)[[1]]
-for (n in 1:N) {
-  rhat <- fit_summary[,10][n]
-  if (rhat > 1.1 || is.infinite(rhat) || is.nan(rhat)) {
-      print(sprintf('Rhat for parameter %s is %s!',
-                    rownames(fit_summary)[n], rhat))
-    }
-  }
-```
-
-Rhats and n-eff look good (we get a waringin for the Rhat of Omega[1,1] but that's a fixed value so no worries).
-
-We can now check some posteriors such as that for $\rh0$
-
-```{r}
-draws <- extract(fit)
-
-plot(density(draws$rho), main = "")
-abline(v=rho)
-```
-
-Now compare true $\zeta$ values (in red) to fitted ones
-```{r}
-zs <- fit_summary[grepl("z", rownames(fit_summary)),]
-#plot(c(Z) - zs[,1])
-df <- data.frame(x = 1:dim(zs)[1],
-                 tz = c(Z),
-                 fz = zs[,1],
-                 L = zs[,4],
-                 U = zs[,8])
-
-ggplot(df, aes(x = x, y = tz)) +
-  geom_point(size = 2, color="red") +
-  geom_point(aes(y = fz), size = 2) +
-  geom_linerange(aes(ymin = L, ymax = U)) +
-  theme_classic()
+print(fit)
 
 ```
 
 
-Let's compare the sample-level regression coefficients
-```{r}
-bs <- fit_summary[grepl("theta", rownames(fit_summary)),]
-
-nf = layout(matrix(c(1,2,3,4,0,0),3,2,byrow=TRUE), widths=c(1,1), heights=c(1,1,0.1))
-#layout.show(nf)
-op <- par( mar = c(3, 3, 2, 2) + 0.1, mgp = c(3.5, 1, 0), las = 1, bty = "n", cex = 1.2)
-plot(scale(frug), bs[1:n.s], ylab = "", xlab = "", main = "intercept")
-points(scale(frug), Theta[,1], col = 2)
-plot(scale(frug), bs[(n.s+1):(2*n.s)], ylab = "", xlab = "", main = "slope")
-points(scale(frug), Theta[,2], col = 2)
-plot(scale(log_bm), bs[1:n.s], ylab = "", xlab = "")
-points(scale(log_bm), Theta[,1], col = 2)
-plot(scale(log_bm),  bs[(n.s+1):(2*n.s)], ylab = "", xlab = "")
-points(scale(log_bm), Theta[,2], col = 2)
-mtext("         scaled frugivory           scaled log body mass", side = 1, line = -2, outer = TRUE, cex=1.3)
-par(op)
-```
