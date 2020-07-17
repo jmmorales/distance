@@ -113,13 +113,13 @@ model {
   z ~ normal(0,2);
   
   // mix prior on rho
-  target += log_sum_exp(log(0.5) +  beta_lpdf(rho|1, 10), log(0.5) +  beta_lpdf(rho|2,2));
+  //target += log_sum_exp(log(0.5) +  beta_lpdf(rho|1, 10), log(0.5) +  beta_lpdf(rho|2,2));
   
   for(i in 1: n_obs) target += (-r[i]^2/(2*exp(b_m[sp[i],1])^2)) - log(pbar[sp[i]]);
   
   for (n in 1:n_sites){
     for(s in 1:n_s){
-      log_lambda[n,s] = dot_product( X[n,] , b_m[s,2:(K+1)]);
+      log_lambda[n,s] = b_m[s,2] + X[n,2] * b_m[s,3]; // dot_product( X[n,] , b_m[s,2:(K+1)]);
       Ymax[n,s] = Y[n,s] + qpois(0.9999, exp(log_lambda[n,s]) * (1 - pbar[s]), n_max[s]);
     }
   }

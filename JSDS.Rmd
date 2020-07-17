@@ -2,7 +2,7 @@
 title: "joint spp distance sampling"
 author: "jmm"
 date: "5/9/2020"
-output: pdf_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -260,7 +260,7 @@ datos = as.data.frame(data)
 
 Now call `Stan`
 
-```{r}
+```{r, cache=TRUE}
 
 library("rstan")
 rstan_options(auto_write = TRUE)
@@ -352,13 +352,13 @@ bs <- fit_summary[grepl("b_m", rownames(fit_summary)),]
 nf = layout(matrix(c(1,2,3,4,0,0),3,2,byrow=TRUE), widths=c(1,1), heights=c(1,1,0.1))
 #layout.show(nf)
 op <- par( mar = c(3, 3, 2, 2) + 0.1, mgp = c(3.5, 1, 0), las = 1, bty = "n", cex = 1.2)
-plot(scale(dgrass), Theta[,2], col = 2,  ylab = "", xlab = "", main = "intercept")
+plot(scale(dgrass), Theta[,2], col = 2,  ylab = "", xlab = "", main = "intercept", ylim=c(-3,3))
 points(scale(dgrass), bs[seq(1, (n_s*3) ,by=3) + 1,1])
 
-plot(scale(dgrass), Theta[,3], col = 2 , ylab = "", xlab = "", main = "slope")
+plot(scale(dgrass), Theta[,3], col = 2 , ylab = "", xlab = "", main = "slope", ylim=c(-3,3) )
 points(scale(dgrass), bs[seq(1, (n_s*3) ,by=3) + 2,1])
 
-plot(scale(log_bm),Theta[,2], col = 2 , ylab = "", xlab = "")
+plot(scale(log_bm),Theta[,2], col = 2 , ylab = "", xlab = "", )
 points(scale(log_bm), bs[seq(1, (n_s*3) ,by=3) + 1,1])
 
 plot(scale(log_bm),Theta[,3], col = 2 , ylab = "", xlab = "")
