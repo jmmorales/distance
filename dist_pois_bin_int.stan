@@ -64,9 +64,10 @@ data {
 }
 
 transformed data {
-  real x_r[0];
-  int x_i[0];
-  int<lower=0> Y[n_sites, n_s];
+  real x_r[0]; // nothing for the integrand
+  int x_i[0];  // nothing for the integrand
+  
+  int<lower=0> Y[n_sites, n_s]; // total spp by site
   
   for(i in 1:n_sites){
     for(j in 1:n_s){
@@ -77,16 +78,14 @@ transformed data {
   for(i in 1:n_obs){
     Y[site[i], sp[i]] += 1;
   }
-  
-  //for(i in 1:n_obs) groupsize[i] = gr[i]-1;
 }
 
 parameters {
   corr_matrix[K+1] Omega;           // correlation matrix for var-covar of betas
   vector<lower=0>[K+1] tau;         // scales for the variance covariance of betas
   vector[n_s * (K+1)] betas;
-  real<lower=0,upper=1> rho;      // correlation between phylogeny and betas
-  vector[n_t * (K+1)] z;              // coeffs for traits
+  real<lower=0,upper=1> rho;        // correlation between phylogeny and betas
+  vector[n_t * (K+1)] z;            // coeffs for traits
   //real<lower=0,upper=1> p[n_s];   
 }
 
@@ -98,7 +97,7 @@ transformed parameters {
   matrix[n_s, K+1] b_m = to_matrix(betas, n_s, K+1);  // coeffs
   real pbar[n_s];
   
-  for(i in 1:n_s) pbar[i] = integrate_1d(hn, 0, B, { exp(b_m[i,1]) }, x_r, x_i, 1e-8) / B;
+  for(i in 1:n_s) pbar[i] = integrate_1d(hn, 0, B, { exp(b_m[i,1]) }, x_r, x_i, 1e-8)/B;
 } 
 
 model {
@@ -115,11 +114,11 @@ model {
   // mix prior on rho
   //target += log_sum_exp(log(0.5) +  beta_lpdf(rho|1, 10), log(0.5) +  beta_lpdf(rho|2,2));
   
-  for(i in 1: n_obs) target += (-r[i]^2/(2*exp(b_m[sp[i],1])^2)) - log(pbar[sp[i]]);
+  for(i in 1: n_obs) target += (-r[i]^2/(2*exp(b_m[sp[i],1])^2)) / pbar[sp[i]];
   
   for (n in 1:n_sites){
     for(s in 1:n_s){
-      log_lambda[n,s] = b_m[s,2] + X[n,2] * b_m[s,3]; // dot_product( X[n,] , b_m[s,2:(K+1)]);
+      log_lambda[n,s] = dot_product( X[n,] , b_m[s,2:(K+1)]);
       Ymax[n,s] = Y[n,s] + qpois(0.9999, exp(log_lambda[n,s]) * (1 - pbar[s]), n_max[s]);
     }
   }
