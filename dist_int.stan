@@ -45,7 +45,7 @@ transformed parameters{
 
 model {
   sigma ~ normal(0, 1);
-  for(i in 1:n_obs) target += (-x[i]^2/(2*sigma^2)) / pbar;
+  for(i in 1:n_obs) target +=  (-x[i]^2/(2*sigma^2)) - log(pbar);
   
 //   N = n_obs + qpois(0.9999, exp(log_lambda[n]) * (1 - p[sp[n]]), n_max[sp[n]]);
   
