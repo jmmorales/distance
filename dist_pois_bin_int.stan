@@ -126,9 +126,11 @@ model {
   for (n in 1:n_sites){
     for(s in 1:n_s){
       vector[Ymax[n,s] - Y[n,s] + 1] lp;
-      for (j in 1:(Ymax[n,s]  - Y[n,s] + 1))
-      lp[j] = poisson_log_lpmf(Y[n,s] + j - 1 | log_lambda[n,s])
-      + binomial_lpmf(Y[n,s] | Y[n,s] + j - 1, pbar[s]);
+      for (j in 1:(Ymax[n,s]  - Y[n,s] + 1)){
+        lp[j] = poisson_log_lpmf(Y[n,s] + j - 1 | log_lambda[n,s]) 
+        + binomial_lpmf(Y[n,s] | Y[n,s] + j - 1, pbar[s]);
+      }
+      
       target += log_sum_exp(lp);
     }
   }

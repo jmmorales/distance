@@ -67,8 +67,6 @@ model {
   {
     vector[n_sites] log_site_prob = log_softmax(log_lambda);
     vector[n_sites] site_prob = softmax(log_lambda);
-    
-    //real psi= sum(lambda)/(n_obs + nz);
     vector[n_sites + 1] lpsite =  to_vector(append_row(lp0, log_site_prob));
     
     for(n in 1: n_obs){
