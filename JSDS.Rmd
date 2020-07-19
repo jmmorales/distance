@@ -237,9 +237,9 @@ B = 5 # max distance
 j <- rep(1:n_s, each = n_sites) 
 site <- rep(1:n_sites, n_s)
 x.s <- rep(x, n_s)
-n <- length(j) # sample size
+n <- length(j)
 
-log_lambda <- Theta[j,1] + Theta[j,2] * x.s
+log_lambda <- Theta[j,2] + Theta[j,3] * x.s
 N <- rpois(n, exp(log_lambda))
 sigma <- exp(Theta[,1])
 ```
@@ -277,7 +277,7 @@ stan_dat <- list(
   r = datos$d,
   K = 2, 
   X = as.matrix(cbind(numeric(length(x))+1, x)),
-  n_max = rep(100, n_s),
+  n_max = rep(50, n_s),
   n_s = as.integer(n_s),
   n_t = 3,
   TT = TT,
