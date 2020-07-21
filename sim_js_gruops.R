@@ -98,13 +98,13 @@ stan_dat <- list(
   site = as.integer(datos$site), # (c(s, rep(1:n_sites, each = nzs ))),
   r = datos$d,
   K = 3, 
-  X = as.matrix(cbind(numeric(length(x))+1, x)),
-  n_max = rep(50, n_s),
-  n_s = as.integer(n_s),
+  X = X,
+  n_max = rep(50, n_sp),
+  n_s = as.integer(n_sp),
   n_t = 3,
   TT = TT,
   C = C,
-  ones = numeric(n_s) + 1,
+  ones = numeric(n_sp) + 1,
   sp = datos$sp
 )
 
