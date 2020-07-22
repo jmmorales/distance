@@ -127,7 +127,7 @@ model {
   // mix prior on rho
   //target += log_sum_exp(log(0.5) +  beta_lpdf(rho|1, 10), log(0.5) +  beta_lpdf(rho|2,2));
   
-  for(i in 1: n_obs) target += (-r[i]^2/(2*exp(sigma[i])^2)) - log(pbar[sp[i]]);
+  for(i in 1: n_obs) target += (-r[i]^2/(2*sigma[i]^2)) - log(pbar[sp[i]]);
   
   for (n in 1:n_sites){
     for(s in 1:n_s){
