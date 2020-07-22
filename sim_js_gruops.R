@@ -2,7 +2,7 @@
 
 library(ape)
 library(mvtnorm)
-set.seed(123)
+set.seed(12)
 
 n_sp = 20  # number of spp
 
@@ -74,11 +74,10 @@ for (i in 1:n_sites) {
       d = d[y == 1]
       gs = gs[y == 1]
       y = y[y == 1]
-      
+      if (sum(y) > 0){
+        data = rbind(data, cbind(rep(i, sum(y)), rep(j, sum(y)), y, d, gs))
+      }
     }
-    if (sum(y) > 0){
-      data = rbind(data, cbind(rep(i, sum(y)), rep(j, sum(y)), y, d, gs))
-    } 
   }
 }
 
@@ -105,12 +104,13 @@ stan_dat <- list(
   TT = TT,
   C = C,
   ones = numeric(n_sp) + 1,
-  sp = datos$sp
+  sp = datos$sp,
+  nz = 3000
 )
 
 pars <- c("pbar", "b_m", "rho",  "Sigma", "z")
 
-fit <- stan(file = 'dist_gr_pois_bin_int.stan',
+fit <- stan(file = 'dist_gr_pois_bin_int_psi.stan',
             data = stan_dat,
             pars = pars,
             iter = 1000, thin = 1, chains = 3)
