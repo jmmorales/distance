@@ -1,8 +1,8 @@
-# Joint spp example with covariates in detection probability
+# Joint spp example with p_obs
 
 library(ape)
 library(mvtnorm)
-set.seed(36)
+set.seed(12)
 
 n_sp = 20  # number of spp
 
@@ -51,7 +51,7 @@ Beta = matrix(betas[1,], n_sp, n_pars)
 
 # Now we define the sampling scheme. Here we follow the simulation sheme of package `AHMbook`.
 
-n_sites = 50 # sampling units
+n_sites = 100 # sampling units
 # sample level predictor (environmental covariate)
 X = cbind(rep(1, n_sites), matrix(rnorm(n_sites*n_env), n_sites, n_env))
 B = 5 # max distance
@@ -116,7 +116,7 @@ fit <- stan(file = 'poisson_binomial_pobs.stan',
             data = stan_dat,
             init = init_f,
             pars = pars,
-            iter = 1000, thin = 1, chains = 3)
+            iter = 10000, thin = 5, chains = 3)
 
 
 fit_summary <- summary(fit)$summary
@@ -173,3 +173,20 @@ plot(scale(log_bm),Beta[,3], col = 2 , ylab = "", xlab = "")
 points(scale(log_bm),  bs[seq(1, (n_sp*3) ,by=3) + 2,1])
 mtext("         scaled grass           scaled log body mass", side = 1, line = -2, outer = TRUE, cex=1.3)
 par(op)
+
+
+plot(c(Beta), 
+   c(bs[seq(1, (n_sp*3) ,by=3) ,1], bs[seq(1, (n_sp*3) ,by=3) + 1,1], bs[seq(1, (n_sp*3) ,by=3) + 2,1]))
+
+df <- data.frame(x = 1:dim(bs)[1],
+                 tb = c(Beta),
+                 fb = c(bs[seq(1, (n_sp*3) ,by=3) ,1], bs[seq(1, (n_sp*3) ,by=3) + 1,1], bs[seq(1, (n_sp*3) ,by=3) + 2,1]),
+                 L =  c(bs[seq(1, (n_sp*3) ,by=3) ,4], bs[seq(1, (n_sp*3) ,by=3) + 1,4], bs[seq(1, (n_sp*3) ,by=3) + 2,4]),
+                 U =  c(bs[seq(1, (n_sp*3) ,by=3) ,8], bs[seq(1, (n_sp*3) ,by=3) + 1,8], bs[seq(1, (n_sp*3) ,by=3) + 2,8])
+                 )
+
+ggplot(df, aes(x = x, y = tb)) +
+  geom_point(size = 2, color="red") +
+  geom_point(aes(y = fb), size = 1) +
+  geom_linerange(aes(ymin = L, ymax = U)) +
+  theme_classic()
