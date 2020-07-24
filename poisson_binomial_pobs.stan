@@ -113,3 +113,17 @@ model {
     }
   }
 }
+
+generated quantities{
+  int<lower=0> N[n_sites,n_s];
+  real<lower=0> D[n_s];
+  
+  for (n in 1:n_sites){
+    for(s in 1:n_s){
+      N[n,s]= poisson_log_rng(dot_product( X[n,] , b_m[s,]) + log(area[n])); 
+      }
+    }
+  
+  for(s in 1:n_s) D[s] = sum(N[,s])/sum(area);
+  
+}
