@@ -2,7 +2,7 @@
 
 library(ape)
 library(mvtnorm)
-set.seed(12)
+set.seed(123)
 
 n_sp = 20  # number of spp
 
@@ -108,7 +108,7 @@ stan_dat <- list(
   p_obs = p
 )
 
-pars <- c( "b_m", "rho",  "Sigma", "z")
+pars <- c( "b_m", "rho",  "Sigma", "z", "D")
 
 init_f <- function () list(b_m = matrix(0, n_sp, n_pars))
 
@@ -116,7 +116,7 @@ fit <- stan(file = 'poisson_binomial_pobs.stan',
             data = stan_dat,
             init = init_f,
             pars = pars,
-            iter = 10000, thin = 5, chains = 3)
+            iter = 1000, thin = 1, chains = 3)
 
 
 fit_summary <- summary(fit)$summary
@@ -125,21 +125,12 @@ hist(fit_summary[,10], main = "R-hat")
 hist(fit_summary[,9], main = "n-eff" )
 par(op)
 
-N <- dim(fit_summary)[[1]]
-for (n in 1:N) {
-  rhat <- fit_summary[,10][n]
-  if (rhat > 1.1 || is.infinite(rhat) || is.nan(rhat)) {
-    print(sprintf('Rhat for parameter %s is %s!',
-                  rownames(fit_summary)[n], rhat))
-  }
-}
-
-
-draws <- extract(fit)
+draws <- extract(fit, pars = "rho")
 
 plot(density(draws$rho), main = "")
 abline(v=rho)
 
+# plot trait level parameters
 zs <- fit_summary[grepl("z", rownames(fit_summary)),]
 #plot(c(Z) - zs[,1])
 df <- data.frame(x = 1:dim(zs)[1],
@@ -149,44 +140,64 @@ df <- data.frame(x = 1:dim(zs)[1],
                  U = zs[,8])
 
 ggplot(df, aes(x = x, y = tz)) +
-  geom_point(size = 2, color="red") +
+  geom_point(size = 3, color="red") +
   geom_point(aes(y = fz), size = 2) +
   geom_linerange(aes(ymin = L, ymax = U)) +
   theme_classic()
 
 
+# plot intercepts and slopes
 bs <- fit_summary[grepl("b_m", rownames(fit_summary)),]
 
 nf = layout(matrix(c(1,2,3,4,0,0),3,2,byrow=TRUE), widths=c(1,1), heights=c(1,1,0.1))
 #layout.show(nf)
 op <- par( mar = c(3, 3, 2, 2) + 0.1, mgp = c(3.5, 1, 0), las = 1, bty = "n", cex = 1.2)
-plot(scale(dgrass), Beta[,2], col = 2,  ylab = "", xlab = "", main = "intercept", ylim=c(-3,3))
-points(scale(dgrass), bs[seq(1, (n_sp*3) ,by=3) + 1,1])
+plot(scale(dgrass), Beta[,2],  ylab = "", xlab = "", main = "intercept", ylim=c(-3,3))
+points(scale(dgrass), bs[seq(1, (n_sp*3) ,by=3) + 1,1], pch = 19, col = 2)
 
-plot(scale(dgrass), Beta[,3], col = 2 , ylab = "", xlab = "", main = "slope", ylim=c(-3,3) )
-points(scale(dgrass), bs[seq(1, (n_sp*3) ,by=3) + 2,1])
+plot(scale(dgrass), Beta[,3], ylab = "", xlab = "", main = "slope", ylim=c(-3,3) )
+points(scale(dgrass), bs[seq(1, (n_sp*3) ,by=3) + 2,1], pch = 19, col = 2)
 
-plot(scale(log_bm),Beta[,2], col = 2 , ylab = "", xlab = "", )
-points(scale(log_bm), bs[seq(1, (n_sp*3) ,by=3) + 1,1])
+plot(scale(log_bm),Beta[,2], ylab = "", xlab = "", ylim=c(-3,3))
+points(scale(log_bm), bs[seq(1, (n_sp*3) ,by=3) + 1,1], pch = 19, col = 2)
 
-plot(scale(log_bm),Beta[,3], col = 2 , ylab = "", xlab = "")
-points(scale(log_bm),  bs[seq(1, (n_sp*3) ,by=3) + 2,1])
+plot(scale(log_bm),Beta[,3], ylab = "", xlab = "", ylim=c(-3,3))
+points(scale(log_bm),  bs[seq(1, (n_sp*3) ,by=3) + 2,1], pch = 19, col = 2)
 mtext("         scaled grass           scaled log body mass", side = 1, line = -2, outer = TRUE, cex=1.3)
-par(op)
+par(mfrow = c(1,1))
 
-
+# another plot of coefficients and estimates
 plot(c(Beta), 
-   c(bs[seq(1, (n_sp*3) ,by=3) ,1], bs[seq(1, (n_sp*3) ,by=3) + 1,1], bs[seq(1, (n_sp*3) ,by=3) + 2,1]))
+     c(bs[seq(1, (n_sp*3) ,by=3) ,1], bs[seq(1, (n_sp*3) ,by=3) + 1,1], bs[seq(1, (n_sp*3) ,by=3) + 2,1]), xlab = "true value", ylab = "posterior mean")
+abline(0,1)
 
+# yet another one
 df <- data.frame(x = 1:dim(bs)[1],
                  tb = c(Beta),
                  fb = c(bs[seq(1, (n_sp*3) ,by=3) ,1], bs[seq(1, (n_sp*3) ,by=3) + 1,1], bs[seq(1, (n_sp*3) ,by=3) + 2,1]),
                  L =  c(bs[seq(1, (n_sp*3) ,by=3) ,4], bs[seq(1, (n_sp*3) ,by=3) + 1,4], bs[seq(1, (n_sp*3) ,by=3) + 2,4]),
                  U =  c(bs[seq(1, (n_sp*3) ,by=3) ,8], bs[seq(1, (n_sp*3) ,by=3) + 1,8], bs[seq(1, (n_sp*3) ,by=3) + 2,8])
-                 )
+)
 
 ggplot(df, aes(x = x, y = tb)) +
   geom_point(size = 2, color="red") +
   geom_point(aes(y = fb), size = 1) +
   geom_linerange(aes(ymin = L, ymax = U)) +
   theme_classic()
+
+# plot density estimates
+D <- fit_summary[grepl("D", rownames(fit_summary)),]
+
+df <- data.frame(x = 1:dim(D)[1],
+                 td = colSums(N)/n_sites,
+                 fd = D[,1],
+                 L =  D[,4],
+                 U =  D[,8]
+)
+
+ggplot(df, aes(x = x, y = td)) +
+  geom_point(size = 2, color="red") +
+  geom_point(aes(y = fd), size = 1) +
+  geom_linerange(aes(ymin = L, ymax = U)) +
+  theme_classic()
+
